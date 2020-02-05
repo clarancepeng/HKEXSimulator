@@ -1,0 +1,9 @@
+lookup:
+  ip: 192.168.60.64
+  port: 8880
+primary:
+  ip: 192.168.90.103
+  port: 28000
+secondary:
+  ip: 192.168.90.84
+  port: 28000
