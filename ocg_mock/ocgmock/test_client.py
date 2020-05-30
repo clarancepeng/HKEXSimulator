@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
     HKEX Simulation
     Test Client
@@ -13,9 +14,9 @@ import yaml
 from bitarray import bitarray
 from datetime import datetime
 
-from ocgmock.msg_type import MsgType
-from ocgmock.util.utils import Utils
-from ocgmock.util.crc32c import Crc32c
+from ocgmock .msg_type import MsgType
+from ocgmock .util.utils import Utils
+from ocgmock .util.crc32c import Crc32c
 
 
 request_id_seq_no = 1
@@ -28,7 +29,7 @@ def init_logger():
     logger_l = logging.getLogger(__name__)
     c_handler = logging.StreamHandler()
     c_handler.setLevel(logging.DEBUG)
-    f_handler = logging.FileHandler('test_client.log')
+    f_handler = logging.FileHandler('logs/test_client.log')
     f_handler.setLevel(logging.INFO)
     c_format = logging.Formatter(log_format)
     f_format = logging.Formatter(log_format)

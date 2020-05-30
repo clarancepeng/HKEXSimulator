@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
     HKEX Simulation
     Socket communication
@@ -8,7 +9,7 @@ import selectors
 import socket
 import yaml
 import logging
-from ocgmock import message_handle
+from ocgmock  import message_handle
 
 sel = selectors.DefaultSelector()
 keep_running = True
@@ -21,7 +22,7 @@ def init_logger():
     logger_l = logging.getLogger(__name__)
     c_handler = logging.StreamHandler()
     c_handler.setLevel(logging.DEBUG)
-    f_handler = logging.FileHandler('bss_server.log')
+    f_handler = logging.FileHandler('logs/bss_server.log')
     f_handler.setLevel(logging.INFO)
     c_format = logging.Formatter(log_format)
     f_format = logging.Formatter(log_format)

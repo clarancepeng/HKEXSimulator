@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 
 uint32_t crc_table[256];
 /* Run this function previously */

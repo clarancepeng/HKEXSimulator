@@ -8,11 +8,11 @@ import struct
 from time import sleep
 from bitarray import bitarray
 from datetime import datetime
-from ocgmock.msg_type import MsgType
-from ocgmock.exec_type import ExecType
-from ocgmock.ord_status import OrdStatus
-from ocgmock.util.utils import Utils
-from ocgmock.util.crc32c import Crc32c
+from ocgmock .msg_type import MsgType
+from ocgmock .exec_type import ExecType
+from ocgmock .ord_status import OrdStatus
+from ocgmock .util.utils import Utils
+from ocgmock .util.crc32c import Crc32c
 
 
 class Message:
@@ -32,7 +32,7 @@ class Message:
         self.keep_running = keep_running
         self.logger = logger
         self.config_map = config_map
-        self.crc = Crc32c()
+        self.crc = Crc32c(logger)
         self.clordid_orderid = {}
 
     def _set_selector_events_mask(self, mode):
@@ -328,10 +328,16 @@ class Message:
         pos += 21
         order_id_in_req = None
         if pm[9]:
-            order_id_in_req  = self.request[pos: pos + 21].decode('utf-8')
+            order_id_in_req = self.request[pos: pos + 21].decode('utf-8')
             pos += 21
 
         # msg_body = b''
+        symbol = security_id.decode('utf8').strip('\x00')
+        self.logger.info(' --------------- securityId = %s ------------------', symbol)
+        if symbol == '13':
+            self.generate_business_reject(comp_id, comp_id_s, cl_ord_id, 13, struct.unpack('<I', self.request[4: 8])[0])
+            return
+
         present_map[0], present_map[1], present_map[2], present_map[3], present_map[4] = 1, 1, 1, 1, 1
         msg_body = struct.pack('<21s12s21sB5s', cl_ord_id, submitting_broker_id, security_id, security_id_source,
                                exch)
@@ -601,6 +607,14 @@ class Message:
                          ', order_qty=%d, exec_inst=%s]',
                          cl_ord_id.decode('utf-8'), security_id.decode('utf-8'), ord_transact_time.decode('utf-8')
                          , side, ord_type, order_qty, exec_inst)
+
+        symbol = security_id.decode('utf-8').strip('\x00')
+        self.logger.info(' --------------- securityId = %s ------------------, %s', symbol, security_id)
+        if symbol == '11':
+            self.generate_business_reject(comp_id, comp_id_s, cl_ord_id, 11, struct.unpack('<I', self.request[4: 8])[0])
+            return
+        else:
+            self.logger.info('security_is is not 11')
         # generate the execution report
         present_map[0], present_map[1], present_map[2], present_map[3], present_map[4] = 1, 1, 1, 1, 1
         msg_body = struct.pack('<21s12s21sB5s', cl_ord_id, submitting_broker_id, security_id, security_id_source,
@@ -787,3 +801,32 @@ class Message:
         mm += Utils.print_binary(message)
         self.logger.info(mm)
         return message
+
+    def generate_business_reject(self, comp_id, comp_id_s, cl_ord_id, ref_msg_type, ref_seq_num):
+        present_map = bitarray(32 * 8, endian='big')
+        present_map.setall(False)
+        resp_msg_type = MsgType.BUSINESS_MESSAGE_REJECT
+        # ref_msg_type = MsgType.NEW_ORDER_SINGLE
+        mm = 'Business message Reject'
+        msg_len = 58
+        # generate the business message reject
+        reason = 'Throttle limit exceeded'
+        reason_len = len(reason)
+        present_map[0], present_map[1], present_map[2], present_map[4], present_map[5] = 1, 1, 1, 1, 1
+        msg_body = struct.pack('<H', 8)
+        msg_len += 2
+        msg_body += struct.pack('<H' + str(reason_len + 1) + 's', reason_len + 1, reason.encode('utf-8'))
+        msg_len += reason_len + 3
+        msg_body += struct.pack('<BI21s', ref_msg_type, ref_seq_num, cl_ord_id)
+        msg_len += 1 + 4 + 21
+
+        message = self.encode_msg_trailer(self.encode_msg_header(resp_msg_type, comp_id, comp_id_s, msg_len,
+                                                                 present_map) + msg_body)
+        mm += Utils.print_binary(message)
+        self.logger.info(mm)
+        # message = b'Response ... '
+        sleep(1)
+        self.response_created = True
+        self._send_buffer += message
+        self.request = b''
+        self._set_selector_events_mask('r')
